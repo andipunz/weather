@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="de" translate="no">
+
+<head>
+    <meta name='robots' content='noindex,nofollow' />
+    <meta name="google" content="notranslate">
+    <title>Wetter</title>
+    <style>
+        html {
+            background-color: #2d3036;
+        }
+
+        body {
+            width: 920px;
+            font-family: Verdana, sans-serif;
+            font-size: 1.5em;
+            margin: 0.5em;
+            text-align: center;
+            color: #fff;
+        }
+
+        table {
+            table-layout: fixed;
+        }
+
+        table td {
+            border-top: solid;
+            border-color: #fff;
+        }
+
+        p {
+            white-space: normal;
+        }
+
+        .name {
+            font-weight: bold;
+            text-align: left;
+        }
+
+        .warnings {
+            margin-top: 0.5em;
+            padding: 0.5em;
+            border: solid;
+            border-color: #fff;
+        }
+
+        .avalanche {
+            overflow: hidden;
+            margin-top: 0.5em;
+            padding: 0.5em;
+            border: solid;
+            border-color: #fff;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .warningContainer {
+            display: none;
+        }
+
+        .warningName {
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .warningDesc {
+            margin: 0;
+        }
+
+        .warningCount {
+            margin: 0;
+            text-align: right;
+        }
+
+        .warning {
+            color: #f60;
+        }
+
+        .red {
+            color: red;
+        }
+
+        .orange {
+            color: orange;
+        }
+
+        .blue {
+            color: lightblue;
+        }
+
+        .violet {
+            color: violet;
+        }
+
+        .yellow {
+            color: yellow;
+        }
+
+        .by {
+            float: left;
+            width: 350px;
+            display: block;
+            text-align: center;
+
+        }
+
+        .by:hover {
+            cursor: pointer;
+        }
+
+        .sa {
+            float: right;
+            width: 350px;
+            display: block;
+            text-align: center;
+        }
+
+        .sa:hover {
+            cursor: pointer;
+        }
+
+        .aspect-img {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            right: 0px;
+        }
+
+        .aspect {
+            float: right;
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .type {
+            float: left;
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .type-aspect {
+            width: 250px;
+            height: 100px;
+            padding: 0px 50px;
+            margin: 0.5em 0em;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <table id="weather">
+            <tr>
+                <th width="240px" class='name'>Name</th>
+                <th width="100px">Höhe</th>
+                <th width="100px">Uhrzeit</th>
+                <th width="80px"><img src="resources/temp.png" alt="Temp °C" height="64px" width="64px"></th>
+                <th width="80px"><img src="resources/wind.png" alt="Wind km/h" height="64px" width="64px"></th>
+                <th width="80px"><img src="resources/direction.png" alt="Richtung" height="64px" width="64px"></th>
+                <th width="80px"><img src="resources/boe.png" alt="Böe km/h" height="64px" width="64px"></th>
+                <th width="80px"><img src="resources/snow.png" alt="HS cm" height="64px" width="64px"></th>
+                <th width="80px"><img src="resources/deltasnow.png" alt="HS/24h cm" height="64px" width="64px"></th>
+            </tr>
+        </table>
+        <div id="avalanche" class="avalanche hidden">
+            <div id="by" class="by" onclick="openInNewTab('https://www.lawinenwarndienst-bayern.de/');">
+            </div>
+            <div id="sa" class="sa" onclick="openInNewTab('https://lawine.salzburg.at/');">
+            </div>
+        </div>
+        <div id="warnings" class="warnings">
+        </div>
+    </div>
+    <!--<script src="https://www.salzburg.gv.at/lawine/Station.js"></script>-->
+    <script type="application/javascript">
+        function openInNewTab(url) {
+            window.open(url, '_blank').focus();
+        }
+    </script>
+    <script>
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const JWT = urlParams.get('jwt');
+        fetch("https://weather.services.bergwacht-bayern.org/?lat=47.586645&lon=12.87029&limit=10", {
+            method: "GET", headers: {
+                "Content-Type": "application/vnd.api+json",
+                "Accept": "application/vnd.api+json",
+                "Authorization": "Bearer " + JWT
+            }
+        }).then(response =>
+            response.json().then(weather_array => {
+                var table = document.getElementById('weather');
+
+                for (var i = 0; i < weather_array.length; i++) {
+                    if (weather_array[i]) {
+                        var row = table.insertRow(-1); // -1 is insert as last
+                        var cell = row.insertCell(- 1); // -1 is insert as last
+                        cell.className = 'title name'; //
+                        cell.innerHTML = weather_array[i]['name'];
+                        var cell = row.insertCell(- 1); // -1 is insert as last
+                        cell.className = 'Altitude'; //
+                        cell.innerHTML = weather_array[i]['elevation'];
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        const time = parseDate(weather_array[i]['time']);
+                        const date15Minutes = new Date(Date.now() - (1000 * 60 * 15));
+                        if (date15Minutes > time) {
+                            cell.className = 'Time red'; //
+                        } else {
+                            cell.className = 'Time'; //
+                        }
+                        const options = { hour: '2-digit', minute: '2-digit' };
+                        cell.innerHTML = time.toLocaleString('de-DE', options);
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        const lt = weather_array[i]['values']['temperature']['value'];
+                        if (lt < 3.0) {
+                            cell.className = 'LT blue'; //
+                        } else if (lt > 25.0) {
+                            cell.className = 'LT orange'; //
+                        }
+                        else {
+                            cell.className = 'LT'; //
+                        }
+                        cell.innerHTML = lt;
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        const wg = weather_array[i]['values']['wind']['value'];
+                        if (wg >= 50) {
+                            cell.className = 'WG red'; //
+                        }
+                        else if (wg >= 30) {
+                            cell.className = 'WG warning'; //
+                        } else {
+                            cell.className = 'WG'; //
+                        }
+                        cell.innerHTML = wg ?? "-";
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        cell.className = 'WR'; //
+                        cell.innerHTML = weather_array[i]['values']['windDirection']['value'] ?? "-";
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        const wgBoe = weather_array[i]['values']['gust']['value'];
+                        if (wgBoe >= 50) {
+                            cell.className = 'WG_BOE red'; //
+                        }
+                        else if (wgBoe >= 30) {
+                            cell.className = 'WG_BOE warning'; //
+                        } else {
+                            cell.className = 'WG_BOE'; //
+                        }
+                        cell.innerHTML = wgBoe ?? "-";
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        cell.className = 'HS'; //
+                        cell.innerHTML = weather_array[i]['values']['snow']['value'] ?? "-";
+                        cell = row.insertCell(- 1); // -1 is insert as last
+                        cell.className = 'HS24'; //
+                        cell.innerHTML = weather_array[i]['values']['snowDelta']['value'] ?? "-";
+                    }
+                }
+            }
+            )
+        )
+
+        function parseDate(str_date) {
+            let date = new Date(Date.parse(str_date));
+            return date;
+        }
+    </script>
+    <script>
+        fetch("https://api.brightsky.dev/alerts?lat=47.6075&lon=12.8964").then(response =>
+            response.json().then(json => {
+
+                let alerts = json.alerts.filter(alert => alert.severity === "moderate" || alert.severity === "severe" || alert.severity === "extreme")
+
+                var element = document.getElementById('warnings');
+                if (alerts.length === 0) {
+                    var para = document.createElement("p");
+                    var node = document.createTextNode("Aktuell keine Unwetterwarnungen");
+                    para.appendChild(node);
+                    element.appendChild(para);
+                } else {
+                    for (var i = 0; i < alerts.length; i++) {
+                        var container = document.createElement("div");
+                        container.className = "warningContainer";
+                        var para = document.createElement("p");
+                        if (alerts[i]['severity'] == "minor") {
+                            para.className = "yellow warningName";
+                        } else if (alerts[i]['severity'] == "moderate") {
+                            para.className = "warning warningName";
+                        } else if (alerts[i]['severity'] == "severe") {
+                            para.className = "red warningName"
+                        } else if (alerts[i]['severity'] == "extreme") {
+                            para.className = "violet warningName"
+                        }
+                        var node = document.createTextNode(alerts[i]['headline_de']);
+                        para.appendChild(node);
+                        container.appendChild(para);
+                        const startDate = new Date(alerts[i]['onset']);
+                        const endDate = new Date(alerts[i]['expires']);
+                        para = document.createElement("p");
+                        if (alerts[i]['severity'] == "minor") {
+                            para.className = "yellow warningDesc";
+                        } else if (alerts[i]['severity'] == "moderate") {
+                            para.className = "warning warningDesc";
+                        } else if (alerts[i]['severity'] == "severe") {
+                            para.className = "red warningDesc"
+                        } else if (alerts[i]['severity'] == "extreme") {
+                            para.className = "violet warningDesc"
+                        }
+                        node = document.createTextNode(startDate.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) + ' Uhr bis ' + endDate.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) + ' Uhr');
+                        para.appendChild(node);
+                        container.appendChild(para);
+                        para = document.createElement("p");
+                        if (alerts[i]['severity'] == "minor") {
+                            para.className = "yellow warningDesc";
+                        } else if (alerts[i]['severity'] == "moderate") {
+                            para.className = "warning warningDesc";
+                        } else if (alerts[i]['severity'] == "severe") {
+                            para.className = "red warningDesc"
+                        } else if (alerts[i]['severity'] == "extreme") {
+                            para.className = "violet warningDesc"
+                        }
+                        node = document.createTextNode(alerts[i]['description_de']);
+                        para.appendChild(node);
+                        container.appendChild(para);
+                        para = document.createElement("p");
+                        para.className = "warningCount";
+                        node = document.createTextNode((i + 1) + " / " + alerts.length);
+                        para.appendChild(node);
+                        container.appendChild(para);
+                        element.appendChild(container);
+                    }
+                    showWarnings();
+                }
+            }
+            )
+        )
+
+        var warningIndex = 0;
+
+        function showWarnings() {
+            var i;
+            var warnings = document.getElementsByClassName("warningContainer");
+            for (i = 0; i < warnings.length; i++) {
+                warnings[i].style.display = "none";
+            }
+            warningIndex++;
+            if (warningIndex > warnings.length) { warningIndex = 1 }
+            warnings[warningIndex - 1].style.display = "block";
+            setTimeout(showWarnings, 15000); // Change image every 15 a
+        }
+
+    </script>
+    <script>
+        generateAvalancheWarnings('https://static.lawinen-warnung.eu/bulletins/latest/AT-05_de_CAAMLv6.json', 'AT-05-17', 'sa', 'Pinzgau');
+        generateAvalancheWarnings('https://static.lawinen-warnung.eu/bulletins/latest/DE-BY_de_CAAMLv6.json', 'DE-BY-60', 'by', 'Berchtesgaden');
+
+        function generateAvalancheWarnings(url, regionID, elementId, name) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // Find the relevant bulletin for the given regionID
+                    const relevantBulletin = data.bulletins.find(bulletin =>
+                        bulletin.regions.some(region => region.regionID === regionID)
+                    );
+
+                    if (!relevantBulletin) {
+                        console.log(`No bulletin found for region: ${regionID}`);
+                        return;
+                    }
+
+                    const container = document.getElementById('avalanche');
+                    container.className = "avalanche";
+                    const element = document.getElementById(elementId);
+
+                    // Display region name
+                    const header = document.createElement("p");
+                    header.textContent = name;
+                    element.appendChild(header);
+
+                    // Process danger ratings and separate by time periods
+                    const dangerRatings = relevantBulletin.dangerRatings || [];
+                    const groupedRatings = groupDangerRatingsByTime(dangerRatings);
+
+                    // Display morning and afternoon danger levels separately if present
+                    if (groupedRatings.morning?.length > 0 && groupedRatings.afternoon?.length > 0) {
+                        const imgMorning = createDangerImage(groupedRatings.morning, "100px");
+                        const imgAfternoon = createDangerImage(groupedRatings.afternoon, "100px");
+
+                        element.appendChild(imgMorning);
+                        element.appendChild(imgAfternoon);
+
+                        const timeText = document.createElement("p");
+                        timeText.textContent = "Vormittag - Nachmittag";
+                        element.appendChild(timeText);
+                    } else {
+                        const img = createDangerImage(groupedRatings.all_day, "200px");
+                        element.appendChild(img);
+                    }
+
+                    // Display validity date
+                    const dateText = document.createElement("p");
+                    dateText.textContent = new Date(relevantBulletin.validTime.endTime).toLocaleDateString("de-DE");
+                    element.appendChild(dateText);
+
+                    // Extract and display avalanche problems
+                    const avalancheProblems = relevantBulletin.avalancheProblems || [];
+                    avalancheProblems.forEach(problem => {
+                        const problemContainer = document.createElement("div");
+                        problemContainer.className = "type-aspect";
+
+                        // Display problem type
+                        const typeContainer = document.createElement("div");
+                        typeContainer.className = "type";
+                        const img = document.createElement("img");
+                        img.src = `resources/${problem.problemType}.png`;
+                        img.width = 100;
+                        img.alt = problem.problemType;
+                        typeContainer.appendChild(img);
+                        problemContainer.appendChild(typeContainer);
+
+                        // Display aspects
+                        const aspectContainer = document.createElement("div");
+                        aspectContainer.className = "aspect";
+                        (problem.aspects || []).forEach(aspect => {
+                            const aspectImg = document.createElement("img");
+                            aspectImg.src = `resources/exposition_${aspect.toLowerCase()}.png`;
+                            aspectImg.width = 100;
+                            aspectImg.alt = aspect;
+                            aspectImg.className = "aspect-img";
+                            aspectContainer.appendChild(aspectImg);
+                        });
+
+                        const rose = document.createElement("img");
+                        rose.src = "resources/exposition_bg.png";
+                        rose.width = 100;
+                        rose.alt = problem.aspects ? problem.aspects.join(", ") : "No aspects";
+                        rose.className = "aspect-img";
+                        aspectContainer.appendChild(rose);
+
+                        problemContainer.appendChild(aspectContainer);
+                        element.appendChild(problemContainer);
+                    });
+                })
+                .catch(error => {
+                    console.error(`Error fetching JSON data: ${error}`);
+                });
+        }
+
+        // Helper function to group danger ratings by time
+        function groupDangerRatingsByTime(dangerRatings) {
+            const morning = dangerRatings.filter(rating => rating.validTimePeriod === "earlier");
+            const afternoon = dangerRatings.filter(rating => rating.validTimePeriod === "later");
+            const all_day = dangerRatings.filter(rating => rating.validTimePeriod === "all_day");
+            return { morning, afternoon, all_day };
+        }
+
+
+        function createDangerImage(ratings, width) {
+            if (!ratings || ratings.length === 0) {
+                return createSingleDangerSVG("0", "#ccc", width);
+            }
+
+            const dangerLevelMap = {
+                "low": "1",
+                "moderate": "2",
+                "considerable": "3",
+                "high": "4",
+                "very_high": "5"
+            };
+
+            const colorMap = {
+                "1": "#cf6", // Low
+                "2": "#ff0", // Moderate
+                "3": "#f90", // Considerable
+                "4": "red",  // High
+                "5": "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAQAAAAnOwc2AAAAFElEQVR42mNgQID/cEgTQRobDwMAVpUxzxObnlMAAAAASUVORK5CYII=)" // Very High
+            };
+
+            if (ratings.length === 1) {
+                const level = dangerLevelMap[ratings[0].mainValue] || "0";
+                const color = colorMap[level] || "#ccc";
+
+                return createSingleDangerSVG(level, color, width);
+            }
+
+            if (ratings.length === 2) {
+                let highLevel = { value: "0", color: "#ccc" };
+                let lowLevel = { value: "0", color: "#ccc" };
+
+                ratings.forEach(rating => {
+                    if (rating.elevation?.lowerBound) {
+                        const level = dangerLevelMap[rating.mainValue] || "0";
+                        lowLevel = { value: level, color: colorMap[level] || "#ccc" };
+                    }
+                    if (rating.elevation?.upperBound) {
+                        const level = dangerLevelMap[rating.mainValue] || "0";
+                        highLevel = { value: level, color: colorMap[level] || "#ccc" };
+                    }
+                });
+
+                const height = getElevationDescription(ratings[0].elevation);
+                return createCombinedDangerSVG(
+                    highLevel.value,
+                    lowLevel.value,
+                    highLevel.color,
+                    lowLevel.color,
+                    height,
+                    width
+                );
+            }
+        }
+
+        function createSingleDangerSVG(level, color, width) {
+            const svgNamespace = "http://www.w3.org/2000/svg";
+
+            const svg = document.createElementNS(svgNamespace, "svg");
+            svg.setAttribute("xmlns", svgNamespace);
+            svg.setAttribute("viewBox", "0 0 65 48");
+            svg.setAttribute("font-size", "12");
+            svg.setAttribute("width", width);
+
+            svg.innerHTML = `
+        <defs>
+            <path id="p0" d="M63.434 47.25A.5.5 0 0 1 63 48H1a.5.5 0 0 1-.432-.751l25-43a.5.5 0 0 1 .866.003l3.556 6.222L35.56.261a.5.5 0 0 1 .873-.01l27 47Z"></path>
+        </defs>
+        <g fill="none" fill-rule="evenodd">
+            <mask id="m0" fill="#fff">
+                <use xlink:href="#p0"></use>
+            </mask>
+            <use xlink:href="#p0" fill="#FFF"></use>
+            <g mask="url(#m0)">
+                <rect x="0" y="-1" width="65" height="50" fill="${color}"></rect>
+            </g>
+            <text text-anchor="middle" fill="#222" x="32.5" y="35">${level}</text>
+            <path stroke="#222" d="M63 47.5 36 .5l-6 11-4-7-25 43h62Z"></path>
+        </g>
+    `;
+
+            const container = document.createElement("div");
+            container.style.display = "inline-block";
+            container.style.textAlign = "center";
+            container.appendChild(svg);
+
+            return container;
+        }
+
+
+        function createCombinedDangerSVG(highLevel, lowLevel, highColor, lowColor, height, width) {
+            const svgNamespace = "http://www.w3.org/2000/svg";
+
+            const svg = document.createElementNS(svgNamespace, "svg");
+            svg.setAttribute("xmlns", svgNamespace);
+            svg.setAttribute("viewBox", "0 0 65 48");
+            svg.setAttribute("font-size", "12");
+            svg.setAttribute("width", width);
+
+            svg.innerHTML = `
+        <defs>
+            <path id="p1" d="M11.334 0h39.462l10.34 18H.87z"></path>
+            <path id="p2" d="M.95 27 14.03 4.501l3.57 6.247a.5.5 0 0 0 .873-.009L24.046.523 39.256 27H.95Z"></path>
+        </defs>
+        <g fill="none" fill-rule="evenodd">
+            <!-- Low Altitude Rating -->
+            <g transform="translate(.5 29)">
+                <mask id="m1" fill="#fff"><use xlink:href="#p1"></use></mask>
+                <g mask="url(#m1)">
+                    <rect x="-1" y="-30" width="65" height="50" fill="${highColor}"></rect>
+                </g>
+                <text text-anchor="middle" fill="#222" x="32" y="14">${highLevel}</text>
+            </g>
+            <!-- High Altitude Rating -->
+            <g transform="translate(11.5 1)">
+                <mask id="m2" fill="#fff"><use xlink:href="#p2"></use></mask>
+                <g mask="url(#m2)">
+                    <rect x="-12" y="-2" width="65" height="50" fill="${lowColor}"></rect>
+                </g>
+                <text text-anchor="middle" fill="#222" x="21" y="23">${lowLevel}</text>
+            </g>
+        </g>
+    `;
+
+            // Add the Waldgrenze height label
+            const heightLabel = document.createElement("span");
+            heightLabel.textContent = height;
+            heightLabel.style.display = "inline-block";
+            heightLabel.style.fontWeight = "bold";
+            heightLabel.style.marginTop = "4px"; // Add spacing
+            heightLabel.style.color = "#FFF";
+
+            // Combine SVG and label
+            const container = document.createElement("div");
+            container.style.display = "inline-block";
+            container.style.textAlign = "center";
+            container.appendChild(svg);
+            container.appendChild(document.createElement("br"))
+            container.appendChild(heightLabel);
+
+            return container;
+        }
+
+
+        function getDangerText(level) {
+            const texts = {
+                "1": "gering",
+                "2": "mäßig",
+                "3": "erheblich",
+                "4": "hoch",
+                "5": "sehr hoch",
+                "0": "keine Gefahrenstufe"
+            };
+            return texts[level] || "unbekannt";
+        }
+
+        function getElevationDescription(elevation) {
+            if (!elevation) return "Waldgrenze";
+            if (elevation.lowerBound === "treeline") return "Waldgrenze";
+            if (elevation.upperBound === "treeline") return "Waldgrenze";
+            if (elevation.lowerBound) return `${elevation.lowerBound}m`;
+            if (elevation.upperBound) return `${elevation.upperBound}m`;
+            return "Waldgrenze";
+        }
+
+    </script>
+</body>
+
+</html>
